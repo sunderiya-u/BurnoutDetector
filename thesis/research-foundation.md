@@ -24,7 +24,7 @@ H1: Changes in smartphone interaction features relative to an individual's perso
 
 H0: Changes in smartphone interaction features relative to an individual's personalized baseline are not associated with changes in self-reported mental fatigue.
 
-##Research Objectives
+## Research Objectives
 1.Review existing scientific literature on mental fatigue, keystroke dynamics, and mobile interaction analysis.
 
 2.Investigate the technical feasibility of collecting interaction metadata through Android AccessibilityService.
