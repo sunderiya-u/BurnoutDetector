@@ -13,7 +13,7 @@ Privacy is a central requirement of the system. The application will be designed
 The research aims to investigate whether measurable changes in smartphone interaction behavior can be associated with self-reported mental fatigue and whether such monitoring can be implemented reliably using Android system services.
 
 The proposed application is intended as an exploratory fatigue-awareness tool rather than a clinical diagnostic system.
-##Research Questions
+## Research Questions
 RQ1: To what extent can Android AccessibilityService provide measurable interaction metadata for behavioral analysis without recording the content of typed text?
 
 RQ2: Which smartphone interaction features, such as typing-related activity, correction behavior, scrolling variability, and application switching frequency, show associations with self-reported mental fatigue?
