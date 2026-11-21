@@ -1,4 +1,4 @@
-\# Problem Statement
+# Problem Statement
 
 
 
@@ -30,7 +30,7 @@ The proposed application is intended as an exploratory fatigue-awareness tool ra
 
 
 
-\## Scope and Limitations
+## Scope and Limitations
 
 
 
