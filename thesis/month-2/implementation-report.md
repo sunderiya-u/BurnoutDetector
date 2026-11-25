@@ -160,18 +160,18 @@ The application follows a separation of responsibilities between its user interf
 
 ```mermaid
 flowchart TD
-&#x20;   A[User Interface] --> B[ConsentPreferences]
-&#x20;   B --> C[Jetpack DataStore]
-&#x20;   B --> D[MonitoringGate]
-&#x20;   C --> E[Effective Monitoring Permission]
-&#x20;   D --> E
-&#x20;   E --> F[BurnoutAccessibilityService]
-&#x20;   D --> F
-&#x20;   G[Android Accessibility Events] --> F
-&#x20;   F --> H[PrivacyEventFilter]
-&#x20;   H --> I{Event eligible?}
-&#x20;   I -->|No| J[Discard event]
-&#x20;   I -->|Yes| K[Future metric extraction]
+    A[User Interface] --> B[ConsentPreferences]
+    B --> C[Jetpack DataStore]
+    B --> D[MonitoringGate]
+    C --> E[Effective Monitoring Permission]
+    D --> E
+    E --> F[BurnoutAccessibilityService]
+    D --> F
+    G[Android Accessibility Events] --> F
+    F --> H[PrivacyEventFilter]
+    H --> I{Event eligible?}
+    I -->|No| J[Discard event]
+    I -->|Yes| K[Future metric extraction]
 ```
 
 The metric extraction component represents planned Month 3 functionality and is not implemented in the current prototype.

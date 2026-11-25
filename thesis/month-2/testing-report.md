@@ -244,7 +244,7 @@ The Month 2 regression tests verified consent and monitoring control but did not
 | Service configuration | `canRetrieveWindowContent="false"`, three event types, `notificationTimeout="0"` |
 | Monitoring state | Consent given, monitoring enabled |
 
-For this test only, temporary diagnostic logging was added to the service. It wrote to Logcat on the development computer: the `addedCount` and `removedCount` of text-change events; the `scrollDeltaY`, `scrollY`, `maxScrollY`, `fromIndex`, `toIndex`, and `itemCount` of scroll events; and the package name of window-state changes, to check the exclusion filter. Event text was never read or logged. The package-name logging is a development diagnostic and is removed before any participant use.
+For this test only, temporary diagnostic logging was added to the service. It wrote to Logcat on the development computer: the `addedCount` and `removedCount` of text-change events; the `scrollDeltaY`, `scrollY`, `maxScrollY`, `fromIndex`, `toIndex`, and `itemCount` of scroll events; and the package name of window-state changes, to check the exclusion filter. Event text was never read or logged. Because the logged per-event values and package names are themselves sensitive (Section 8.6), all temporary diagnostic logging was removed from the service after the test (Section 9.6).
 
 In line with the privacy design, third-party applications are described generically in this report.
 
@@ -311,12 +311,18 @@ Characters were typed into the password fields of two login screens: the Google 
 | Google account sign-in | Text-change events received (`added=1 removed=0`), fewer events than characters typed |
 | Third-party application login | Text-change events received, one per character typed (`added=1 removed=0`) |
 
-On both screens, the events passed the `isPassword()` check, which means that these fields were **not marked as password fields** for accessibility, most likely because the screens use web-based or custom input fields. The application never received the typed text, because event text is never read. However, per-event character counts and timestamps would reveal the **length and typing rhythm** of a password.
+On both screens, the events passed the `isPassword()` check, which means that these fields were **not marked as password fields** for accessibility, most likely because the screens use web-based or custom input fields.
+
+Android includes the changed text in text-change events, so the event objects delivered to the service **may have contained the characters typed into these password fields**. The application's code never reads, logs, or stores event text, so the characters were not processed or recorded; this protection depends on the application's code, not on the Android system. Separately, the per-event character counts and timestamps logged during this test would reveal the **length and typing rhythm** of a password.
 
 **Consequence.** Password detection cannot be relied on as the only protection. The design was changed accordingly:
 
-1. **No per-event storage.** Events are counted in memory, and only five-minute window totals are stored, so the length of a single input cannot be recovered. The temporary `InteractionEvent` table was removed from the database design.
-2. **Login-context exclusions.** Text-change events from system sign-in and credential components (Google Play services and Android's credential manager) are ignored.
+1. **No per-event storage.** Events are counted in memory, and only five-minute window totals are stored. In a window that also contains other typing, a short input cannot be separated from the totals. The temporary `InteractionEvent` table was removed from the database design.
+2. **Minimum-activity suppression.** Typing values are stored as `null` in windows with fewer than 20 typed characters, so a window containing only a login does not reveal the input's approximate length.
+3. **Login-context exclusions.** Text-change events from system sign-in and credential components (Google Play services and Android's credential manager) are ignored. Login screens inside third-party applications cannot be recognized in this way.
+4. **No per-event diagnostic logging.** The temporary logging used in this test was removed (Section 9.6).
+
+These measures reduce, but do not eliminate, the risk.
 
 The updated privacy and database designs are described in `privacy-design.md` (Sections 5.2 and 8) and `database-design.md` (Sections 3.1 and 6). This result is the concrete example of the best-effort limitation stated in the participant information.
 
@@ -328,7 +334,7 @@ The updated privacy and database designs are described in `privacy-design.md` (S
 | Equal-count and invalid text-change events | Ignore equal-count events; skip and count invalid events |
 | Scroll distance mostly unavailable; events every ~100 ms | Group events into gestures; distance only where reported |
 | Launcher, overlays and rapid flips inflate application switches | One-second minimum dwell time; exclude launcher and overlays |
-| Password fields not reliably flagged | No per-event storage; exclude login and credential components |
+| Password fields not reliably flagged | No per-event storage; minimum-activity suppression; exclude login and credential components; no per-event logging |
 
 These findings answer the first part of RQ1 for this device: typing, deletion, scrolling and application switching can be observed without reading text, but only after device-specific processing. The second part of RQ1, consistency across manufacturers and keyboards, requires repeating this test on a second device.
 
@@ -352,4 +358,34 @@ Controlled failure-injection testing is required to verify these recovery mechan
 
 ### 9.3 Activity Destruction During Withdrawal
 
-The current user interface uses lifecycle
+The current user interface uses lifecycle-bound coroutine scopes for preference updates. Withdrawal first closes the in-memory monitoring gate, then cancels and awaits any pending monitoring update, and only then removes the stored consent timestamp. If the activity is destroyed during this sequence (for example, because the participant leaves the screen or the device configuration changes), the coroutine can be cancelled before the consent timestamp is removed.
+
+Because the gate is closed first, monitoring remains blocked in this case, and after a process restart the gate starts closed. The expected failure mode is therefore safe: consent may remain stored, but monitoring stays paused. This has not been tested. A lifecycle test should destroy the activity at each step of the withdrawal sequence and verify that monitoring remains blocked and that withdrawal can be completed afterwards. Running withdrawal in an application-level scope, independent of the activity, would remove the risk and is planned for Month 3.
+
+### 9.4 Device-to-Device Transfer
+
+Device-transfer exclusion rules are configured, but physical device-to-device migration was not tested (Section 6.4). The rejected backup request does not prove that all manufacturer-specific migration tools are blocked.
+
+### 9.5 Scope of the Event Observation Test
+
+The event observation test (Section 8) was a short manual session on one device with one keyboard. It establishes which reporting patterns occur, not how often they occur or whether other applications behave differently. In particular:
+
+- the second part of RQ1, consistency across manufacturers and keyboards, has not yet been tested;
+- the net-change classification rule has been checked against the logged events, but has not yet been implemented or unit-tested;
+- the scroll-gesture grouping threshold (about 300 ms) and the application-switch dwell time (about one second) are initial values derived from this session and must be validated with more data.
+
+### 9.6 Temporary Diagnostic Logging
+
+The per-event logging used in Section 8 wrote character counts, scroll values, and package names to Logcat, which is readable through the development connection. Because these values can reveal password lengths and the applications a person uses, the logging was removed from the service after the test, and the privacy design now requires that no per-event values or package names are logged in builds used with participants. The removal is verified by code review before each participant build.
+
+### 9.7 Components Not Yet Implemented
+
+Feature extraction, in-memory window aggregation, local storage in Room, data deletion, data export, fatigue prompts, minimum-activity suppression, and login-context exclusions are not yet implemented. The privacy safeguards that depend on them (Section 7) cannot be verified until Month 3 and later.
+
+## 10. Conclusion
+
+Month 2 testing verified the consent and monitoring-control mechanisms of the prototype: all 20 unit tests passed, nine of ten device regression tests passed with one inconclusive result, and the Android Backup Manager rejected backup of the application on the test device.
+
+The event observation test showed that the AccessibilityService receives the interaction events required by the research, but in device- and application-specific forms that require processing: text changes must be classified by net change, scroll events must be grouped into gestures, and application switches must be filtered. The password-field test showed that password detection cannot be relied on, which led to the removal of per-event storage from the design and to additional safeguards.
+
+The prototype is therefore ready for Month 3 development of feature extraction and local storage. It is not ready for use with research participants until the safeguards in Section 9.7 are implemented and verified, and until the event observation test has been repeated on a second device.

@@ -71,43 +71,44 @@ The full participant information sheet and consent form are included as an appen
 
 ## 5. AccessibilityService Privacy Boundary
 
-Privacy is enforced in two layers: first by the Android system, through the service configuration, and then by the application's own `EventProcessor`.
+Privacy is enforced in two layers: first by the Android system, through the service configuration, and then by the application's own event-processing components (`PrivacyEventFilter` in the current prototype, followed by the planned in-memory event classification and window accumulation in Month 3).
 
 ### 5.1. System-Level Restrictions
 
-The accessibility service configuration file (`accessibility_service_config.xml`) restricts what Android delivers to the application:
+The accessibility service configuration file (`burnout_accessibility_config.xml`) restricts what Android delivers to the application:
 
 - **`canRetrieveWindowContent="false"`**: Android prevents the service from reading the content of the screen (the window content tree). The service receives only the events themselves. This enforces the privacy boundary at the system level rather than relying solely on application code.
 - **Restricted event types**: only `typeViewTextChanged`, `typeViewScrolled`, and `typeWindowStateChanged` are requested, so Android does not deliver any other event types.
 
-Disabling window-content retrieval does not remove textual information from accessibility events. Therefore, the `EventProcessor` must avoid accessing event text (including `event.text` and `beforeText`) and discard all unnecessary event fields.
+Disabling window-content retrieval does not remove textual information from accessibility events: Android still includes the changed text in each text-change event delivered to the service. Therefore, the application's event-processing code must never access event text (including `event.text` and `beforeText`) and must discard all unnecessary event fields.
 
 Password-field detection remains possible under these restrictions, because `AccessibilityEvent.isPassword()` is available on the event itself.
 
 ### 5.2. Application-Level Processing
 
-The `EventProcessor` acts as the privacy boundary between Android events and the application's database.
-
-It must:
+The application's event-processing components act as the privacy boundary between Android events and the application's database. Together, they must:
 
 1. Accept only the event types needed for the research.
-2. Exclude events from password fields, identified with `AccessibilityEvent.isPassword()`.
+2. Exclude events flagged as password fields by `AccessibilityEvent.isPassword()`, and text-change events from system sign-in and credential components (best-effort; see below).
 3. Exclude events originating from Burnout Detector itself.
 4. Ignore irrelevant system and keyboard windows.
 5. Extract only timestamps, event categories, and permitted numeric measurements.
-6. Never read or log event text.
+6. Never read, log, or store event text, and never log per-event measurements outside temporary, documented development tests (see Section 13).
 7. Discard the original accessibility event after processing.
 
 No raw text, screenshots, or application package names are written to the database.
 
 Password-field detection and other exclusions are best-effort protections, not guarantees that every sensitive context can be identified. A field that holds sensitive information but is not marked as a password field by its application cannot be recognized.
 
-Device testing confirmed this limitation (see `testing-report.md`, Section 8.6): on a web-based sign-in screen and on a third-party application's custom login screen, characters typed into password fields were delivered as ordinary text-change events, because those fields were not flagged by `isPassword()`. The application never received the password text, but stored per-event counts and timestamps could have revealed the **length and typing rhythm** of a password. The design therefore adds two protections that do not depend on password detection:
+Device testing confirmed this limitation (see `testing-report.md`, Section 8.6): on the Google account sign-in screen and on a third-party application's custom login screen, typing in password fields produced ordinary text-change events that were not flagged by `isPassword()`. Because Android includes the changed text in such events, **the event objects delivered to the service may contain password characters.** The application does not read, log, or store that text, but this protection relies on the application's code rather than on the Android system. In addition, stored per-event counts and timestamps could have revealed the **length and typing rhythm** of a password.
 
-1. **No per-event storage.** Events are counted in memory and only five-minute window totals are stored (Section 8), so the length of a single input cannot be recovered.
-2. **Login-context exclusions.** Text-change events from system components used for sign-in and credential entry (e.g., Google Play services and Android's credential manager) are ignored.
+The design therefore adds three protections that do not depend on password detection:
 
-This limitation is included in the participant information.
+1. **No per-event storage.** Events are counted in memory, and only five-minute window totals are stored (Section 8). In a window that also contains other typing, a short input cannot be separated from the totals.
+2. **Minimum-activity suppression.** Typing values are stored as `null` in windows with fewer than 20 typed characters, so a window containing only a login does not reveal the input's approximate length (see `database-design.md`, Section 3.1).
+3. **Login-context exclusions.** Text-change events from system components used for sign-in and credential entry (Google Play services and Android's credential manager) are ignored. Login screens built into third-party applications cannot be recognized in this way.
+
+These measures reduce, but do not eliminate, the risk. This limitation is included in the participant information.
 
 ## 6. Local Storage and Security
 
@@ -132,7 +133,7 @@ On Android 13 and later, applications installed this way must be granted "Allow 
 
 ## 8. Data Retention
 
-Individual interaction events are never written to storage. They exist only in memory as running totals until their five-minute window closes, when one aggregated `InteractionWindow` record is stored and the in-memory totals are reset. If the process is stopped, the totals of the open window are lost rather than stored.
+Individual interaction events are never written to storage. They exist only in memory as running totals until their five-minute window closes, when one aggregated `InteractionWindow` record is stored and the in-memory totals are reset. If the process is stopped abruptly, the totals of the open window are lost rather than stored.
 
 Incomplete windows are handled as described in [`database-design.md`](database-design.md), Section 6.
 
@@ -162,13 +163,21 @@ The application must explain that exported files may no longer be protected by t
 
 ## 11. Data Deletion and Withdrawal
 
-The application provides an option to delete all locally stored research data.
+The application provides an option to delete all locally stored research data. Deletion is designed so that it is complete, cannot be undone accidentally, and cannot be undone by data written afterwards.
 
-Deletion includes aggregated interaction windows, fatigue reports, stored baseline or anomaly information, and the current in-memory window totals.
+### 11.1. Safe Deletion Requirements
 
-The application also clears participant-specific settings and consent records as appropriate.
+1. **Confirmation.** The participant must confirm deletion in a dialog that states what will be deleted and that deletion cannot be undone.
+2. **Stop collection first.** Before any data is deleted, the monitoring gate is closed and the in-memory window totals are discarded, so that no window can be written during or after deletion.
+3. **Delete the database files, not only the rows.** Deleting rows from SQLite can leave the old data in unused database pages and in the write-ahead log (`-wal`) file until they are overwritten. The database is therefore closed and its files (the database file and its `-wal` and `-shm` files) are deleted, for example with `Context.deleteDatabase()`. A new, empty database is created the next time it is needed.
+4. **Complete scope.** Deletion covers aggregated interaction windows, fatigue reports, stored baseline or anomaly information, the in-memory window totals, any scheduled fatigue prompts, and temporary export files in the application's cache.
+5. **Settings.** Deleting research data also resets the monitoring preference to paused. Consent records are cleared when the participant withdraws (Section 11.2).
+6. **Failure handling.** If any step fails, monitoring remains paused, the participant is told that deletion was not completed, and deletion can be retried.
+7. **Verification.** After deletion, the database files are absent or empty and no new window has been written (Section 13).
 
-Deletion must be confirmed by the participant to avoid accidental data loss.
+### 11.2. Withdrawal
+
+Withdrawing consent closes the monitoring gate, discards the in-memory window totals (the current partial window is not stored), and removes the consent record. The participant is then offered the deletion described in Section 11.1.
 
 Deleting local data does not automatically delete copies previously exported or transferred to researchers. The study information must explain how participants can request deletion of any externally held data, subject to the approved protocol.
 
@@ -190,8 +199,8 @@ Before collecting data from external participants, the study protocol, consent m
 
 | Requirement | Verification method |
 |---|---|
-| No text collection | Review `EventProcessor` and logging code |
-| System-level content restriction | Inspect `accessibility_service_config.xml` (`canRetrieveWindowContent="false"`, event types) |
+| No text collection | Review the event-processing and logging code: no access to `event.text` or `beforeText` |
+| System-level content restriction | Inspect `burnout_accessibility_config.xml` (`canRetrieveWindowContent="false"`, event types) |
 | Password-field exclusion | Test password inputs on supported devices |
 | Local-only processing | Confirm the `INTERNET` permission is absent from the manifest |
 | Consent before monitoring | Test onboarding flow |
@@ -199,7 +208,8 @@ Before collecting data from external participants, the study protocol, consent m
 | No per-event persistence | Inspect the database schema and contents: only window and report tables exist |
 | Login-context exclusions | Repeat the password-field device test (`testing-report.md`, Section 8.6) and confirm no text-change events are processed |
 | User-controlled export | Test CSV export |
-| Complete local deletion | Inspect database and DataStore after deletion |
+| Complete local deletion | After deletion, confirm that the database file and its `-wal`/`-shm` files are absent or empty, DataStore is reset, and no new window is written while monitoring is paused |
+| No per-event diagnostic logging | Review the service code: no per-event values or package names are written to Logcat in builds used with participants |
 | No automatic backup | Inspect `allowBackup` and `dataExtractionRules` configuration |
 
-In summary, the design minimizes data collection while preserving the measurements the research requires, and each safeguard above is verified during implementation and device testing.
+In summary, the design aims to minimize data collection while preserving the measurements the research requires. The verification methods above define how each safeguard is to be checked. Their current status, including which safeguards are not yet implemented or not yet tested, is recorded in the testing reports; no safeguard should be considered verified until its result is documented there.

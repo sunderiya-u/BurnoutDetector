@@ -102,17 +102,14 @@ class BurnoutAccessibilityService : AccessibilityService() {
         if (!shouldProcessEvent(event)) return
 
         when (event.eventType) {
-
             AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED -> {
-                // Month 3: sanitized typing metadata.
+                // Month 3: EventClassifier (net change). No per-event logging.
             }
-
             AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
-                // Month 3: sanitized scrolling metadata.
+                // Month 3: scroll-gesture grouping. No per-event logging.
             }
-
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
-                // Month 3: ephemeral app-switch counting.
+                // Month 3: app-switch detection with dwell time. Package names are never logged or stored.
             }
         }
     }
