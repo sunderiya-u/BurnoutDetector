@@ -13,3 +13,14 @@
 .externalNativeBuild
 .cxx
 local.properties
+# Local Android Studio configuration
+.idea/
+.gradle/
+local.properties
+
+# Generated build outputs
+**/build/
+
+# Local signing files
+*.jks
+*.keystore
