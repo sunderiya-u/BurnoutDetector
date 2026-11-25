@@ -19,8 +19,8 @@ All hypotheses are tested within individuals, relative to each participant's per
 **H1a:** Typing speed is lower than an individual's baseline during periods of elevated self-reported mental fatigue.
 *H0a:* Typing speed does not differ from baseline during periods of elevated self-reported mental fatigue.
 
-**H1b:** Backspace ratio is higher than an individual's baseline during periods of elevated self-reported mental fatigue.
-*H0b:* Backspace ratio does not differ from baseline during periods of elevated self-reported mental fatigue.
+**H1b:** The deletion-based correction ratio is higher than an individual's baseline during periods of elevated self-reported mental fatigue.
+*H0b:* The deletion-based correction ratio does not differ from baseline during periods of elevated self-reported mental fatigue.
 
 **H1c:** Scroll variability differs from an individual's baseline during periods of elevated self-reported mental fatigue.
 *H0c:* Scroll variability does not differ from baseline during periods of elevated self-reported mental fatigue.
@@ -37,8 +37,9 @@ H1a and H1b are directional, following prior findings linking slower typing and 
 
 ## Operational Definitions
 
-- **Self-reported mental fatigue:** measured with an in-app rating prompt shown several times per day (planned: 3–5 prompts). The scale (e.g., Karolinska Sleepiness Scale or a 0–10 visual analogue scale) will be selected and justified in the study design.
-- **Elevated fatigue:** a rating at or above a predefined threshold (e.g., KSS ≥ 7) or above the participant's own median rating. The final rule will be fixed before data analysis.
+- **Self-reported mental fatigue:** measured with the Karolinska Sleepiness Scale (KSS; 1 = extremely alert, 9 = very sleepy, fighting sleep) in an in-app prompt shown several times per day (planned: 3–5 prompts).
+- **Elevated fatigue:** a KSS rating of 7 or higher. A participant-relative definition (a rating above the participant's own median) will be reported as a sensitivity analysis. Both rules are fixed before data analysis.
+- **Deletion-based correction ratio:** deletions ÷ (typed characters + deletions) within a five-minute window, where typed characters and deletions are text changes with a net character change of +1 and −1 respectively. Multi-character replacements (e.g., autocorrect) are excluded.
 - **Linking ratings to behavior:** each self-report is compared with the 5-minute interaction windows recorded in the 30 minutes preceding the rating.
 - **Personalized baseline:** per-participant feature statistics (e.g., median and spread) computed during an initial observation period.
 
