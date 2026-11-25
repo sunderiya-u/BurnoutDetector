@@ -23,8 +23,8 @@ Functional requirements describe the operations that the Burnout Detector applic
 | FR01 | User information and consent | The application must explain what is and is not collected before monitoring starts, and the user must explicitly enable the accessibility service in the system settings. | Must | — |
 | FR02 | Interaction monitoring | The application must receive text-change, scroll, and window-change accessibility events while monitoring is enabled. | Must | RQ1 |
 | FR03 | Sensitive field exclusion | The application must ignore events from password fields and from its own user interface. | Must | RQ1 |
-| FR04a | Typing speed | The application must derive typing speed from the timing and character counts (`addedCount`) of text-change events, without reading textual content. | Must | RQ1, RQ2 |
-| FR04b | Correction frequency | The application must detect deletions (`removedCount > 0`, `addedCount = 0`) and compute a backspace ratio. Multi-character replacements (e.g., autocorrect) are counted separately. | Must | RQ1, RQ2 |
+| FR04a | Typing speed | The application must derive typing speed from the timing of text-change events and their net character change (`addedCount − removedCount`), without reading textual content. | Must | RQ1, RQ2 |
+| FR04b | Correction frequency | The application must detect deletions (net change of −1) and compute a backspace ratio. Multi-character replacements (e.g., autocorrect) are counted separately. | Must | RQ1, RQ2 |
 | FR05 | Scroll monitoring | The application must record scroll events and, where available, their scroll distance. | Should | RQ1, RQ2 |
 | FR06 | Application switching | The application must count transitions between applications, excluding keyboard and system UI windows. Package names are not stored. | Should | RQ1, RQ2 |
 | FR07 | Local storage | The application must store behavioral measurements in a local Room database. | Must | — |
@@ -79,8 +79,8 @@ The application must state that its fatigue-related outputs are experimental ind
 *Verification:* consent and feedback screens.
 
 ### NFR09 — Data retention
-Raw interaction events must be deleted once they have been aggregated into time windows, and all data must be deletable by the user at any time (FR12). Participants' data is retained only for the duration of the study.
-*Verification:* database inspection after aggregation.
+Individual interaction events must never be written to storage; only aggregated five-minute windows are stored. All data must be deletable by the user at any time (FR12). Participants' data is retained only for the duration of the study.
+*Verification:* inspection of the database schema and contents.
 
 ## 4. Architecture
 
@@ -93,7 +93,7 @@ The application is organized as a pipeline of five layers. Each layer has one re
 | 1. Android system | — | Emits accessibility events for text changes, scrolling, and window changes |
 | 2. Event collection | `BurnoutAccessibilityService` | Receives events from the system and forwards them to the processor |
 | 3. Event processing | `EventProcessor` | Extracts type, timestamp, and character counts; filters password fields, own-app events, and system windows; discards everything else. **This is the privacy boundary:** no text passes beyond this layer |
-| 4. Storage | Room database (`AppDatabase`, DAOs) | Stores interaction events, aggregated windows, and fatigue ratings on the device |
+| 4. Storage | Room database (`AppDatabase`, DAOs) | Stores aggregated five-minute windows and fatigue ratings on the device. Individual events are never stored |
 | 5. Presentation | Compose screens | Consent, status, fatigue rating prompt, export, and delete |
 
 ## 5. Data Flow
@@ -101,9 +101,9 @@ The application is organized as a pipeline of five layers. Each layer has one re
 1. The user types, scrolls, or switches apps.
 2. Android sends an `AccessibilityEvent` to `BurnoutAccessibilityService`.
 3. `EventProcessor` checks the event type and source. Events from password fields, from the application itself, or from system windows are discarded.
-4. For accepted events, the processor creates an `InteractionEvent` containing only the timestamp, event type, and numeric values (added/removed character counts or scroll distance).
-5. The event is written to the Room database on a background thread.
-6. Every five minutes, events are aggregated into an `InteractionWindow` containing the computed features (typing speed, backspace ratio, scroll variability, app switches). Aggregated raw events are then deleted (NFR09).
+4. For accepted events, the processor classifies the event (typed character, deletion, replacement, scroll, or application switch) and updates running totals **in memory**. Only numeric values are used: the net character change, timestamps, and, where available, scroll distance.
+5. Individual events are never written to storage. This protects against cases where a password field is not recognized by Android (see `testing-report.md`, Section 8.6).
+6. Every five minutes, the in-memory totals are converted into an `InteractionWindow` containing the computed features (typing speed, backspace ratio, scroll gestures, app switches), which is written to the Room database on a background thread. The totals are then reset (NFR09).
 7. Fatigue ratings entered by the user are stored as `FatigueReport` records and later linked to the windows from the preceding 30 minutes.
 
 ## 6. Database Design

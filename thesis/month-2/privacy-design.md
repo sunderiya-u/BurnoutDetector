@@ -100,7 +100,14 @@ It must:
 
 No raw text, screenshots, or application package names are written to the database.
 
-Password-field detection and other exclusions are best-effort protections, not guarantees that every sensitive context can be identified. For example, a field that holds sensitive information but is not marked as a password field by its application cannot be recognized. This limitation must be included in the participant information and evaluated during testing.
+Password-field detection and other exclusions are best-effort protections, not guarantees that every sensitive context can be identified. A field that holds sensitive information but is not marked as a password field by its application cannot be recognized.
+
+Device testing confirmed this limitation (see `testing-report.md`, Section 8.6): on a web-based sign-in screen and on a third-party application's custom login screen, characters typed into password fields were delivered as ordinary text-change events, because those fields were not flagged by `isPassword()`. The application never received the password text, but stored per-event counts and timestamps could have revealed the **length and typing rhythm** of a password. The design therefore adds two protections that do not depend on password detection:
+
+1. **No per-event storage.** Events are counted in memory and only five-minute window totals are stored (Section 8), so the length of a single input cannot be recovered.
+2. **Login-context exclusions.** Text-change events from system components used for sign-in and credential entry (e.g., Google Play services and Android's credential manager) are ignored.
+
+This limitation is included in the participant information.
 
 ## 6. Local Storage and Security
 
@@ -125,11 +132,9 @@ On Android 13 and later, applications installed this way must be granted "Allow 
 
 ## 8. Data Retention
 
-Temporary `InteractionEvent` records are retained only until their five-minute window has been successfully aggregated.
+Individual interaction events are never written to storage. They exist only in memory as running totals until their five-minute window closes, when one aggregated `InteractionWindow` record is stored and the in-memory totals are reset. If the process is stopped, the totals of the open window are lost rather than stored.
 
-After successful aggregation, the temporary records are deleted within the same Room transaction used to store the corresponding `InteractionWindow`.
-
-Incomplete windows and interrupted processing are handled by the recovery mechanism described in [`database-design.md`](database-design.md).
+Incomplete windows are handled as described in [`database-design.md`](database-design.md), Section 6.
 
 Aggregated windows and fatigue reports are retained only for the study period, subject to the approved research protocol.
 
@@ -151,8 +156,6 @@ Users can explicitly export their `InteractionWindow` and `FatigueReport` measur
 
 Exports include a pseudonymous participant code instead of the participant's name.
 
-Temporary `InteractionEvent` records are not exported.
-
 Export requires a deliberate user action and uses Android's document creation interface, so the participant can choose where the file is saved.
 
 The application must explain that exported files may no longer be protected by the application's private storage.
@@ -161,7 +164,7 @@ The application must explain that exported files may no longer be protected by t
 
 The application provides an option to delete all locally stored research data.
 
-Deletion includes temporary interaction events, aggregated interaction windows, fatigue reports, and stored baseline or anomaly information.
+Deletion includes aggregated interaction windows, fatigue reports, stored baseline or anomaly information, and the current in-memory window totals.
 
 The application also clears participant-specific settings and consent records as appropriate.
 
@@ -193,9 +196,10 @@ Before collecting data from external participants, the study protocol, consent m
 | Local-only processing | Confirm the `INTERNET` permission is absent from the manifest |
 | Consent before monitoring | Test onboarding flow |
 | Monitoring pause | Verify that no new events are stored |
-| Temporary-event deletion | Inspect database after aggregation |
+| No per-event persistence | Inspect the database schema and contents: only window and report tables exist |
+| Login-context exclusions | Repeat the password-field device test (`testing-report.md`, Section 8.6) and confirm no text-change events are processed |
 | User-controlled export | Test CSV export |
 | Complete local deletion | Inspect database and DataStore after deletion |
 | No automatic backup | Inspect `allowBackup` and `dataExtractionRules` configuration |
 
-In summary, the design minimizes data collection while preserving the measurements the research requires, and each safeguard above is verified during implementation and device testing.s
+In summary, the design minimizes data collection while preserving the measurements the research requires, and each safeguard above is verified during implementation and device testing.
