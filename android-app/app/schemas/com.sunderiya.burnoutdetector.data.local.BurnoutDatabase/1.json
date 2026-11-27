@@ -1,0 +1,201 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "ce371e652372332dda12e794f06c40fe",
+    "entities": [
+      {
+        "tableName": "interaction_windows",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `startTime` INTEGER NOT NULL, `endTime` INTEGER NOT NULL, `utcOffsetMinutes` INTEGER NOT NULL, `monitoredMs` INTEGER NOT NULL, `isComplete` INTEGER NOT NULL, `eventCount` INTEGER NOT NULL, `invalidEventCount` INTEGER NOT NULL, `typedCharCount` INTEGER, `deletionCount` INTEGER, `replacementCount` INTEGER, `activeTypingMs` INTEGER, `typingSpeed` REAL, `correctionRatio` REAL, `scrollGestureCount` INTEGER NOT NULL, `scrollActiveMs` INTEGER NOT NULL, `scrollVariability` REAL, `scrollDistancePx` INTEGER, `appSwitchCount` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startTime",
+            "columnName": "startTime",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endTime",
+            "columnName": "endTime",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "utcOffsetMinutes",
+            "columnName": "utcOffsetMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "monitoredMs",
+            "columnName": "monitoredMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isComplete",
+            "columnName": "isComplete",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "eventCount",
+            "columnName": "eventCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "invalidEventCount",
+            "columnName": "invalidEventCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "typedCharCount",
+            "columnName": "typedCharCount",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "deletionCount",
+            "columnName": "deletionCount",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "replacementCount",
+            "columnName": "replacementCount",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "activeTypingMs",
+            "columnName": "activeTypingMs",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "typingSpeed",
+            "columnName": "typingSpeed",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "correctionRatio",
+            "columnName": "correctionRatio",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "scrollGestureCount",
+            "columnName": "scrollGestureCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scrollActiveMs",
+            "columnName": "scrollActiveMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scrollVariability",
+            "columnName": "scrollVariability",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "scrollDistancePx",
+            "columnName": "scrollDistancePx",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "appSwitchCount",
+            "columnName": "appSwitchCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_interaction_windows_startTime",
+            "unique": true,
+            "columnNames": [
+              "startTime"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_interaction_windows_startTime` ON `${TABLE_NAME}` (`startTime`)"
+          }
+        ]
+      },
+      {
+        "tableName": "fatigue_reports",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `promptedAt` INTEGER, `respondedAt` INTEGER, `utcOffsetMinutes` INTEGER NOT NULL, `kssScore` INTEGER)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "promptedAt",
+            "columnName": "promptedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "respondedAt",
+            "columnName": "respondedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "utcOffsetMinutes",
+            "columnName": "utcOffsetMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kssScore",
+            "columnName": "kssScore",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_fatigue_reports_promptedAt",
+            "unique": false,
+            "columnNames": [
+              "promptedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_fatigue_reports_promptedAt` ON `${TABLE_NAME}` (`promptedAt`)"
+          },
+          {
+            "name": "index_fatigue_reports_respondedAt",
+            "unique": false,
+            "columnNames": [
+              "respondedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_fatigue_reports_respondedAt` ON `${TABLE_NAME}` (`respondedAt`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ce371e652372332dda12e794f06c40fe')"
+    ]
+  }
+}
